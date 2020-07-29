@@ -1,8 +1,13 @@
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 from requests import get
 from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
+from collections import Counter
 import datetime
+import matplotlib
+matplotlib.use('MacOSX')
 
 
 def simple_get(url):
@@ -58,6 +63,20 @@ class AvailabilityCrawler:
                 return a['href']
         return None
 
+    def add_availability(self, date):
+        def is_valid():
+            today = datetime.date.today()
+            num_of_days_from_today = abs((date - today).days)
+            # if num_of_days_from_today > 90:
+            #     return False
+
+            # if num_of_days_from_today == 0:
+            #     return False
+            return True
+
+        if is_valid():
+            self.availabilities.append(date)
+
     def crawl(self, path):
         def extract_date_string(availability_text):
             return availability_text.split('Available')[1]\
@@ -80,7 +99,7 @@ class AvailabilityCrawler:
         for available_from in self.html.select('.available-from'):
             date_string = extract_date_string(available_from.text)
             date = parse_date(date_string)
-            self.availabilities.append(date)
+            self.add_availability(date)
 
         next_page_path = self._find_path_to_next_page()
         if next_page_path:
@@ -92,55 +111,34 @@ class AvailabilityCrawler:
             print()
 
 
+def plot_availabilities(availabilities):
+    x_axis = []
+    y_axis = []
+    availabilities_counter = Counter(availabilities)
+    for date in availabilities_counter:
+        x_axis.append(mdates.date2num(date))
+        y_axis.append(availabilities_counter[date])
+
+    plt.plot_date(x_axis, y_axis)
+    plt.show()
+
+def write_availabilities_to_csv_file(availabilities):
+    filename = 'result.csv'
+    availabilities_csv = [
+        datetime.datetime.strftime(d, '%d/%m/%Y') for d in availabilities
+    ]
+    with open(filename, 'w') as csv_file:
+        for availability_csv in availabilities_csv:
+            csv_file.write(availability_csv)
+            csv_file.write('\n')
+
+
 if __name__ == "__main__":
-    start_path_1mile = '/to-rent/property/london/e9/homerton-south-hackney/?beds_min=2&include_shared_accommodation=false&price_frequency=per_month&price_max=1750&price_min=1500&q=E9&radius=1&results_sort=newest_listings&search_source=refine'
     start_path_0mile = '/to-rent/property/london/e9/homerton-south-hackney/?beds_min=2&include_shared_accommodation=false&price_frequency=per_month&price_max=1750&price_min=1500&q=E9&radius=0&results_sort=newest_listings&search_source=refine'
+    start_path_1mile = '/to-rent/property/london/e9/homerton-south-hackney/?beds_min=2&include_shared_accommodation=false&price_frequency=per_month&price_max=1750&price_min=1500&q=E9&radius=1&results_sort=newest_listings&search_source=refine'
+    start_path_3mile = '/to-rent/property/london/e9/homerton-south-hackney/?beds_min=2&include_shared_accommodation=false&price_frequency=per_month&price_max=1750&price_min=1500&q=E9&radius=3&results_sort=newest_listings&search_source=refine'
 
     crawler = AvailabilityCrawler()
-    # crawler.crawl(start_path_0mile)
-
+    crawler.crawl(start_path_3mile)
     # print(crawler.availabilities)
-
-    availabilities = [
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 29),
-        datetime.date(2020, 7, 31),
-        datetime.date(2020, 8, 10),
-        datetime.date(2020, 8, 15),
-        datetime.date(2020, 8, 17),
-        datetime.date(2020, 8, 19),
-        datetime.date(2020, 8, 20),
-        datetime.date(2020, 8, 21),
-        datetime.date(2020, 8, 22),
-        datetime.date(2020, 8, 24),
-        datetime.date(2020, 8, 6),
-        datetime.date(2020, 8, 8),
-        datetime.date(2020, 9, 1),
-        datetime.date(2020, 9, 30),
-        datetime.date(2020, 9, 4),
-        datetime.date(2020, 9, 7),
-        datetime.date(2020, 10, 2),
-        datetime.date(2020, 10, 3)
-    ]
-
-    # search_url = 'https://www.zoopla.co.uk/to-rent/property/london/e9/homerton-south-hackney/?beds_min=2&include_shared_accommodation=false&price_frequency=per_month&price_max=1750&price_min=1500&q=E9&radius=0&results_sort=newest_listings&search_source=refine'
-    # raw_html = simple_get(search_url)
-    # html = BeautifulSoup(raw_html, 'html.parser')
-    # for available_from in html.select('.available-from'):
-    #     print(available_from.text)
-
-    # for a in html.find_all('a'):
-    #     if 'Next' in a.text:
-    #         print(a)
-    #         print(a['href'])
+    write_availabilities_to_csv_file(crawler.availabilities)

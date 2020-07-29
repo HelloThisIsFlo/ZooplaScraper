@@ -9,6 +9,7 @@ autopep8 = "*"
 [packages]
 requests = "*"
 beautifulsoup4 = "*"
+matplotlib = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.7"
